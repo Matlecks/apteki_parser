@@ -18,9 +18,17 @@ class ParserConfig extends Model
         'is_active',
         'has_js',
         'last_parsed_at',
-        'has_ajax',
-        'ajax_url',
         'ajax_selectors',
+        'has_post',
+        'method',
+        'post_url',
+        'post_params',
+        'json_paths',
+        'json_clear_params',
+        'post_url',
+        'params_to',
+        'params_from',
+        'response_form',
     ];
 
     protected $casts = [
@@ -30,5 +38,9 @@ class ParserConfig extends Model
         'has_js' => 'boolean',
         'has_ajax' => 'boolean',
         'ajax_selectors' => 'array',
+        'has_post' => 'boolean',
+        'post_params' => 'array',
+        'json_paths' => 'array',
+        'json_clear_params' => 'array',
     ];
 }

@@ -20,9 +20,16 @@ return new class extends Migration
             $table->text('url');
             $table->boolean('is_active')->default(true);
             $table->boolean('has_js')->default(false);
-            $table->boolean('has_ajax')->default(false);
-            $table->text('ajax_url')->nullable();
             $table->json('ajax_selectors')->nullable();
+            $table->boolean('has_post')->default(false);
+            $table->text('method')->default('GET');
+            $table->text('post_url')->nullable();
+            $table->json('post_params')->nullable();
+            $table->json('json_paths')->nullable();
+            $table->json('json_clear_params')->nullable();
+            $table->text('params_to')->nullable();
+            $table->text('params_from')->nullable();
+            $table->text('response_form')->nullable();
             $table->timestamp('last_parsed_at')->nullable();
             $table->timestamps();
         });
