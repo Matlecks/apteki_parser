@@ -20,6 +20,9 @@ return new class extends Migration {
             $table->text('opening_hours')->nullable();
             $table->string('phone')->nullable();
             $table->string('website')->nullable();
+            $table->text('city')->nullable();
+            $table->text('region')->nullable();
+            $table->text('country')->nullable();
             $table->timestamps();
         });
     }

@@ -20,15 +20,19 @@ class ParserConfig extends Model
         'last_parsed_at',
         'ajax_selectors',
         'has_post',
+        'has_get',
         'method',
         'post_url',
         'post_params',
         'json_paths',
-        'json_clear_params',
+        'json_path_to_array',
         'post_url',
         'params_to',
         'params_from',
         'response_form',
+        'city_id',
+        'country_id',
+        'state_id',
     ];
 
     protected $casts = [
@@ -43,4 +47,19 @@ class ParserConfig extends Model
         'json_paths' => 'array',
         'json_clear_params' => 'array',
     ];
+
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class);
+    }
+
+    public function state()
+    {
+        return $this->belongsTo(State::class);
+    }
 }

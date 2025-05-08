@@ -21,7 +21,7 @@ Route::get('/', function () {
 
 Route::get('/fetch-pharmacies', [PharmacyController::class, 'fetchPharmacies']);
 
-Route::prefix('api/pharmacy')->group(function () {
+Route::prefix('/pharmacy')->group(function () {
     Route::get('/parse/{config}', [ParseController::class, 'parse'])
         ->where('config', '[0-9]+')
         ->name('pharmacy.parse');

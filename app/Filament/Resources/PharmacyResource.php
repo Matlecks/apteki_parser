@@ -19,6 +19,11 @@ class PharmacyResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+    protected static ?string $modelLabel = 'Аптека';
+
+    protected static ?string $pluralModelLabel = 'Аптеки';
+
+
     public static function form(Form $form): Form
     {
         return $form

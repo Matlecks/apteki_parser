@@ -7,36 +7,22 @@ use App\Models\Pharmacy;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\BrowserKit\HttpBrowser;
 use Symfony\Component\HttpClient\HttpClient;
+use Illuminate\Http\Request;
 
 class ParseController extends Controller
 {
-    public function parseAllActive()
+    public function parseAllActive(Request $request)
     {
         set_time_limit(3600);
 
-        $configs = ParserConfig::where('is_active', true)->get();
+        $query = ParserConfig::query()->where('is_active', true);
+
+        $configs = !empty($request->parse_all) ? $query->get() : $query->whereIn('id', $request->config_ids)->get();
+
         $results = [];
 
         foreach ($configs as $config) {
-            $response = $this->getGetResponse($config);
-
-            if ($config->has_post) {
-                $postData = $this->getPostData($config, $response);
-
-                $urls = $this->getPrepareUrls($config, $postData);
-
-                foreach ($urls as $url) {
-                    $response = $config->method == "GET" ? $this->getGetResponse($config, $url) : $this->getPostResponse($config, $url);
-
-                    if ($config->response_form == 'html') {
-                        $results[$config->id][] = $this->parseHtmlResponse($config, $response, $url);
-                    } elseif ($config->response_form == 'json') {
-                        $results[$config->id][] = $this->parseJsonResponse($config, $response);
-                    }
-                }
-            } else {
-                $results[$config->id][] = $this->parseHtmlResponse($config, $response);
-            }
+            $results[$config->id] = $this->parseSingleConfig($config);
         }
 
         return response()->json([
@@ -45,6 +31,32 @@ class ParseController extends Controller
         ]);
     }
 
+    public function parseSingleConfig(ParserConfig $config)
+    {
+        $response = $this->getGetResponse($config);
+
+        $results = [];
+
+        if ($config->has_post) {
+            $postData = $this->getPostData($config, $response);
+
+            $urls = $this->getPrepareUrls($config, $postData);
+
+            foreach ($urls as $url) {
+                $response = $config->method == "GET" ? $this->getGetResponse($config, $url) : $this->getPostResponse($config, $url);
+
+                if ($config->response_form == 'html') {
+                    $results[$config->id][] = $this->parseHtmlResponse($config, $response, $url);
+                } elseif ($config->response_form == 'json') {
+                    $results[$config->id][] = $this->parseJsonResponse($config, $response);
+                }
+            }
+        } else {
+            $results[$config->id][] = $this->parseHtmlResponse($config, $response);
+        }
+
+        return $results;
+    }
 
     public function getPrepareUrls(ParserConfig $config, $postData)
     {
@@ -86,6 +98,13 @@ class ParseController extends Controller
             $postData = $this->getAjaxFormData($config, $html);
         } elseif ($config->params_from == "custom") {
             $postData = [$config->post_params];
+        } elseif ($config->params_from == "vocabulary") {
+            $postData = $config->country->states->map(function ($state) {
+                return [
+                    'id' => $state->id,
+                    'value' => $state->name
+                ];
+            })->toArray();
         }
 
         return $postData;
@@ -177,10 +196,17 @@ class ParseController extends Controller
                         'phone' => $this->extractDataFromNode($node, $config->selectors['phone'] ?? null),
                         'opening_hours' => $this->extractDataFromNode($node, $config->selectors['working_hours'] ?? null),
                         'website' => $url,
+                        'city' => $config->city ?? null,
+                        'region' => $config->region ?? null,
+                        'country' => $config->country ?? null,
                     ];
                 } else {
                     $data = [
                         'name' => $node,
+                        'website' => $url,
+                        'city' => $config->city ?? null,
+                        'region' => $config->region ?? null,
+                        'country' => $config->country ?? null,
                     ];
                 }
 
@@ -232,7 +258,13 @@ class ParseController extends Controller
     {
         $json = trim($json);
 
-        $json = mb_convert_encoding($json, 'UTF-8', 'UTF-8');
+        if (!is_string($json) || $json === '') {
+            throw new \InvalidArgumentException('Empty or invalid JSON input');
+        }
+
+        if (!mb_check_encoding($json, 'UTF-8')) {
+            $json = mb_convert_encoding($json, 'UTF-8');
+        }
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             $errorMsg = 'JSON decode error: ' . json_last_error_msg();
@@ -241,27 +273,26 @@ class ParseController extends Controller
             throw new \Exception($errorMsg);
         }
 
-        if (!empty($config->json_clear_params)) {
-            $jsonClearParams = $config->json_clear_params;
-            foreach ($jsonClearParams as $prefix => $suffix) {
-                $escapedPrefix = preg_quote($prefix, '/');
-                $escapedSuffix = preg_quote($suffix, '/');
+        if (!empty($config->json_path_to_array)) {
+            $jsonPathToArray = $config->json_path_to_array;
 
-                $json = preg_replace("/^{$escapedPrefix}|{$escapedSuffix}$/", '', $json);
-            }
+//            $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($json, true);
+            $data = data_get($data, $jsonPathToArray, []);
+        } else {
+            $data = json_decode($json, true);
         }
-        $data = json_decode($json, true);
 
         $pharmacies = [];
 
         foreach ($data as $item) {
             $mappedData = [
-                'name' => $this->getJsonValue($item, $config->json_paths['name'] ?? null),
-                'address' => $this->getJsonValue($item, $config->json_paths['address'] ?? null),
-                'phone' => $this->getJsonValue($item, $config->json_paths['phone'] ?? null),
-                'opening_hours' => $this->getJsonValue($item, $config->json_paths['opening_hours'] ?? null),
-                'latitude' => $this->getJsonValue($item, $config->json_paths['latitude'] ?? null),
-                'longitude' => $this->getJsonValue($item, $config->json_paths['longitude'] ?? null),
+                'name' => $item[$config->json_paths['name']] ?? null,
+                'address' => $item[$config->json_paths['address']] ?? null,
+                'phone' => $item[$config->json_paths['phone']] ?? null,
+                'opening_hours' => $item[$config->json_paths['opening_hours']] ?? null,
+                'latitude' => $item[$config->json_paths['latitude']] ?? null,
+                'longitude' => $item[$config->json_paths['longitude']] ?? null,
                 'website' => $url ?: $config->url,
             ];
 
@@ -275,7 +306,7 @@ class ParseController extends Controller
                     'address' => trim($mappedData['address']),
                 ],
                 [
-                    'phone' => $mappedData['phone'] ?? null,
+                    'phone' => !empty($mappedData['phone']) ? $mappedData['phone'] : null,
                     'opening_hours' => $mappedData['opening_hours'] ?? null,
                     'website' => $mappedData['website'] ?? null,
                     'latitude' => isset($mappedData['latitude']) ? (float)$mappedData['latitude'] : null,
