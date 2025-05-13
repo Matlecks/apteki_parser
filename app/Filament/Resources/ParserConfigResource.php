@@ -195,8 +195,20 @@ class ParserConfigResource extends Resource
                                         'html' => 'HTML',
                                         'custom' => 'Кастомный',
                                         'vocabulary' => 'Словарь',
-                                    ])->columnSpan('full')
+                                    ])
+                                    ->live()
+                                    ->columnSpan('full')
                                 /*->reactive()*/,
+
+                                Forms\Components\Select::make('vocabulary')
+                                    ->label('Тип словаря')
+                                    ->options([
+                                        'states' => 'Области',
+                                        'cities' => 'Города',
+                                    ])
+                                    ->required()
+                                    ->visible(fn (Forms\Get $get) => $get('params_from') === 'vocabulary')  // Показывается только если выбран "vocabulary"
+                                    ->columnSpan('full'),
 
                                 Forms\Components\Fieldset::make('Параметры HTML')
                                     ->schema([

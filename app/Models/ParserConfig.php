@@ -29,6 +29,7 @@ class ParserConfig extends Model
         'post_url',
         'params_to',
         'params_from',
+        'vocabulary',
         'response_form',
         'city_id',
         'country_id',

@@ -29,6 +29,7 @@ return new class extends Migration {
             $table->text('json_path_to_array')->nullable();
             $table->text('params_to')->nullable();
             $table->text('params_from')->nullable();
+            $table->text('vocabulary')->nullable();
             $table->text('response_form')->nullable();
             $table->foreignId('city_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('country_id')->nullable()->constrained()->onDelete('set null');
